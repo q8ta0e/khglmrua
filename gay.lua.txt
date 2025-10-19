@@ -1,0 +1,138 @@
+-- SaveManager.lua
+local httpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+
+local SaveManager = {}
+do
+    SaveManager.Folder = "FluentConfig"
+    SaveManager.Ignore = {}
+    
+    SaveManager.Parser = {
+        Toggle = {
+            Save = function(idx, object) 
+                return { type = "Toggle", idx = idx, value = object.Value } 
+            end,
+            Load = function(idx, data)
+                if SaveManager.Options[idx] then 
+                    SaveManager.Options[idx]:SetValue(data.value)
+                end
+            end,
+        },
+        Slider = {
+            Save = function(idx, object)
+                return { type = "Slider", idx = idx, value = object.Value }
+            end,
+            Load = function(idx, data)
+                if SaveManager.Options[idx] then 
+                    SaveManager.Options[idx]:SetValue(data.value)
+                end
+            end,
+        },
+        Dropdown = {
+            Save = function(idx, object)
+                return { type = "Dropdown", idx = idx, value = object.Value }
+            end,
+            Load = function(idx, data)
+                if SaveManager.Options[idx] then 
+                    SaveManager.Options[idx]:SetValue(data.value)
+                end
+            end,
+        },
+        Input = {
+            Save = function(idx, object)
+                return { type = "Input", idx = idx, text = object.Value }
+            end,
+            Load = function(idx, data)
+                if SaveManager.Options[idx] then 
+                    SaveManager.Options[idx]:SetValue(data.text)
+                end
+            end,
+        }
+    }
+
+    function SaveManager:AutoCreateConfig()
+        local playerName = Players.LocalPlayer.Name
+        local configPath = self.Folder .. "/" .. playerName .. ".json"
+        
+        if not isfile(configPath) then
+            self:Save(playerName)
+            writefile(self.Folder .. "/autoload.txt", playerName)
+        end
+        
+        self:LoadAutoloadConfig()
+    end
+
+    function SaveManager:SetFolder(folder)
+        self.Folder = folder
+        self:BuildFolderTree()
+    end
+
+    function SaveManager:Save(name)
+        local data = { objects = {} }
+
+        for idx, option in next, self.Options do
+            if self.Parser[option.Type] and not self.Ignore[idx] then
+                table.insert(data.objects, self.Parser[option.Type].Save(idx, option))
+            end
+        end
+
+        local success, encoded = pcall(httpService.JSONEncode, httpService, data)
+        if not success then return false, "encode failed" end
+
+        writefile(self.Folder .. "/" .. name .. ".json", encoded)
+        return true
+    end
+
+    function SaveManager:Load(name)
+        local file = self.Folder .. "/" .. name .. ".json"
+        if not isfile(file) then return false, "file not found" end
+
+        local success, decoded = pcall(httpService.JSONDecode, httpService, readfile(file))
+        if not success then return false, "decode failed" end
+
+        for _, option in next, decoded.objects do
+            if self.Parser[option.type] then
+                task.spawn(function()
+                    self.Parser[option.type].Load(option.idx, option)
+                end)
+            end
+        end
+        return true
+    end
+
+    function SaveManager:BuildFolderTree()
+        if not isfolder(self.Folder) then
+            makefolder(self.Folder)
+        end
+    end
+
+    function SaveManager:SetLibrary(library)
+        self.Library = library
+        self.Options = library.Options
+        self:BuildFolderTree()
+        
+        task.spawn(function()
+            wait(2)
+            self:AutoCreateConfig()
+        end)
+    end
+
+    function SaveManager:LoadAutoloadConfig()
+        local autoloadFile = self.Folder .. "/autoload.txt"
+        if isfile(autoloadFile) then
+            local name = readfile(autoloadFile)
+            self:Load(name)
+        end
+    end
+
+    function SaveManager:IgnoreThemeSettings()
+        self.Ignore = {
+            ["InterfaceTheme"] = true,
+            ["AcrylicToggle"] = true,
+            ["TransparentToggle"] = true,
+            ["MenuKeybind"] = true
+        }
+    end
+end
+
+return SaveManager
