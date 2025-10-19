@@ -53,13 +53,20 @@ do
     function SaveManager:AutoCreateConfig()
         local playerName = Players.LocalPlayer.Name
         local configPath = self.Folder .. "/" .. playerName .. ".json"
+        local autoloadFile = self.Folder .. "/autoload.txt"
         
-        if not isfile(configPath) then
+        -- KIỂM TRA NẾU ĐÃ CÓ FILE CONFIG
+        if isfile(configPath) then
+            -- Đã có config, chỉ cần load
+            writefile(autoloadFile, playerName) -- Cập nhật autoload
+            self:Load()
+            print("Loaded existing config for:", playerName)
+        else
+            -- Chưa có config, tạo mới
             self:Save()
-            writefile(self.Folder .. "/autoload.txt", playerName)
+            writefile(autoloadFile, playerName)
+            print("Created new config for:", playerName)
         end
-        
-        self:LoadAutoloadConfig()
     end
 
     function SaveManager:SetFolder(folder)
