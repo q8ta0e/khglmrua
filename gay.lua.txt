@@ -47,26 +47,6 @@ do
                     SaveManager.Options[idx]:SetValue(data.text)
                 end
             end,
-        },
-        Colorpicker = {
-            Save = function(idx, object)
-                return { type = "Colorpicker", idx = idx, value = object.Value:ToHex(), transparency = object.Transparency }
-            end,
-            Load = function(idx, data)
-                if SaveManager.Options[idx] then 
-                    SaveManager.Options[idx]:SetValueRGB(Color3.fromHex(data.value), data.transparency)
-                end
-            end,
-        },
-        Keybind = {
-            Save = function(idx, object)
-                return { type = "Keybind", idx = idx, mode = object.Mode, key = object.Value }
-            end,
-            Load = function(idx, data)
-                if SaveManager.Options[idx] then 
-                    SaveManager.Options[idx]:SetValue(data.key, data.mode)
-                end
-            end,
         }
     }
 
@@ -88,7 +68,6 @@ do
     end
 
     function SaveManager:Save(name)
-        local playerName = Players.LocalPlayer.Name  -- Dùng player name thay vì name parameter
         local data = { objects = {} }
 
         for idx, option in next, self.Options do
@@ -100,13 +79,12 @@ do
         local success, encoded = pcall(httpService.JSONEncode, httpService, data)
         if not success then return false, "encode failed" end
 
-        writefile(self.Folder .. "/" .. playerName .. ".json", encoded)  -- Dùng playerName
+        writefile(self.Folder .. "/" .. name .. ".json", encoded)
         return true
     end
 
     function SaveManager:Load(name)
-        local playerName = Players.LocalPlayer.Name  -- Dùng player name thay vì name parameter
-        local file = self.Folder .. "/" .. playerName .. ".json"  -- Dùng playerName
+        local file = self.Folder .. "/" .. name .. ".json"
         if not isfile(file) then return false, "file not found" end
 
         local success, decoded = pcall(httpService.JSONDecode, httpService, readfile(file))
@@ -133,7 +111,17 @@ do
         self.Options = library.Options
         self:BuildFolderTree()
         
-        -- AUTO SAVE KHI CÓ THAY ĐỔI
+        -- THÊM AUTOSAVE KHI CÁC ELEMENTS THAY ĐỔI
+        self:SetupAutoSave()
+        
+        task.spawn(function()
+            wait(2)
+            self:AutoCreateConfig()
+        end)
+    end
+
+    -- HÀM MỚI: THIẾT LẬP AUTOSAVE
+    function SaveManager:SetupAutoSave()
         for idx, option in next, self.Options do
             if self.Parser[option.Type] and not self.Ignore[idx] then
                 if option.Type == "Toggle" then
@@ -149,41 +137,28 @@ do
                         self:AutoSave()
                     end)
                 elseif option.Type == "Input" then
-                    if option.Finished then
-                        option:OnChanged(function()
-                            self:AutoSave()
-                        end)
-                    else
-                        local debounce = false
-                        option:OnChanged(function()
-                            if not debounce then
-                                debounce = true
-                                task.spawn(function()
-                                    wait(1)
-                                    self:AutoSave()
-                                    debounce = false
-                                end)
-                            end
-                        end)
-                    end
-                elseif option.Type == "Colorpicker" then
+                    -- Debounce cho Input để tránh lưu liên tục khi đang gõ
+                    local debounce = false
                     option:OnChanged(function()
-                        self:AutoSave()
+                        if not debounce then
+                            debounce = true
+                            task.spawn(function()
+                                wait(1) -- Chờ 1 giây sau khi ngừng gõ
+                                self:AutoSave()
+                                debounce = false
+                            end)
+                        end
                     end)
                 end
             end
         end
-        
-        task.spawn(function()
-            wait(2)
-            self:AutoCreateConfig()
-        end)
     end
 
+    -- HÀM MỚI: AUTOSAVE
     function SaveManager:AutoSave()
         local playerName = Players.LocalPlayer.Name
         task.spawn(function()
-            self:Save(playerName)  -- Gọi Save với playerName
+            self:Save(playerName)
         end)
     end
 
