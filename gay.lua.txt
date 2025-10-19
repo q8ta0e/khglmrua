@@ -50,32 +50,44 @@ do
         }
     }
 
+    function SaveManager:BuildFolderTree()
+        -- KIỂM TRA NGƯỢC: NẾU KHÔNG CÓ FOLDER THÌ TẠO
+        if not isfolder(self.Folder) then
+            makefolder(self.Folder)
+            print("📁 Created folder:", self.Folder)
+        end
+    end
+
     function SaveManager:AutoCreateConfig()
         local playerName = Players.LocalPlayer.Name
         local configPath = self.Folder .. "/" .. playerName .. ".json"
-        local autoloadFile = self.Folder .. "/autoload.txt"
         
-        -- KIỂM TRA NẾU ĐÃ CÓ FILE CONFIG
-        if isfile(configPath) then
-            -- Đã có config, chỉ cần load
-            writefile(autoloadFile, playerName) -- Cập nhật autoload
-            self:Load()
-            print("Loaded existing config for:", playerName)
-        else
+        -- KIỂM TRA VÀ TẠO FOLDER
+        self:BuildFolderTree()
+        
+        -- KIỂM TRA NGƯỢC: NẾU KHÔNG CÓ CONFIG FILE THÌ TẠO MỚI
+        if not isfile(configPath) then
             -- Chưa có config, tạo mới
             self:Save()
-            writefile(autoloadFile, playerName)
-            print("Created new config for:", playerName)
+            print("✅ Created new config for:", playerName)
+        else
+            -- Đã có config, chỉ cần load
+            self:Load()
+            print("✅ Loaded existing config for:", playerName)
         end
     end
 
     function SaveManager:SetFolder(folder)
         self.Folder = folder
-        self:BuildFolderTree()
     end
 
     function SaveManager:Save()
         local playerName = Players.LocalPlayer.Name
+        local configPath = self.Folder .. "/" .. playerName .. ".json"
+        
+        -- KIỂM TRA FOLDER TRƯỚC KHI SAVE
+        self:BuildFolderTree()
+        
         local data = { objects = {} }
 
         for idx, option in next, self.Options do
@@ -85,19 +97,31 @@ do
         end
 
         local success, encoded = pcall(httpService.JSONEncode, httpService, data)
-        if not success then return false, "encode failed" end
+        if not success then 
+            warn("❌ Save failed: encode error")
+            return false, "encode failed" 
+        end
 
-        writefile(self.Folder .. "/" .. playerName .. ".json", encoded)
+        writefile(configPath, encoded)
+        print("💾 Auto-saved config for:", playerName)
         return true
     end
 
     function SaveManager:Load()
         local playerName = Players.LocalPlayer.Name
-        local file = self.Folder .. "/" .. playerName .. ".json"
-        if not isfile(file) then return false, "file not found" end
+        local configPath = self.Folder .. "/" .. playerName .. ".json"
+        
+        -- KIỂM TRA NGƯỢC: NẾU KHÔNG CÓ FILE CONFIG THÌ BÁO LỖI
+        if not isfile(configPath) then
+            warn("❌ Load failed: config file not found")
+            return false, "file not found" 
+        end
 
-        local success, decoded = pcall(httpService.JSONDecode, httpService, readfile(file))
-        if not success then return false, "decode failed" end
+        local success, decoded = pcall(httpService.JSONDecode, httpService, readfile(configPath))
+        if not success then 
+            warn("❌ Load failed: decode error")
+            return false, "decode failed" 
+        end
 
         for _, option in next, decoded.objects do
             if self.Parser[option.type] then
@@ -109,30 +133,24 @@ do
         return true
     end
 
-    function SaveManager:BuildFolderTree()
-        if not isfolder(self.Folder) then
-            makefolder(self.Folder)
-        end
-    end
-
     function SaveManager:SetLibrary(library)
         self.Library = library
         self.Options = library.Options
-        self:BuildFolderTree()
         
-        -- THÊM AUTOSAVE KHI CÁC ELEMENTS THAY ĐỔI
+        -- THIẾT LẬP AUTOSAVE
         self:SetupAutoSave()
         
+        -- TỰ ĐỘNG TẠO/LOAD CONFIG
         task.spawn(function()
-            wait(2)
+            wait(2) -- Chờ UI load xong
             self:AutoCreateConfig()
         end)
     end
 
-    -- HÀM MỚI: THIẾT LẬP AUTOSAVE
     function SaveManager:SetupAutoSave()
         for idx, option in next, self.Options do
-            if self.Parser[option.Type] and not self.Ignore[idx] then
+            -- KIỂM TRA NGƯỢC: NẾU KHÔNG PHẢI LÀ IGNORE VÀ CÓ PARSER
+            if not self.Ignore[idx] and self.Parser[option.Type] then
                 if option.Type == "Toggle" then
                     option:OnChanged(function()
                         self:AutoSave()
@@ -163,18 +181,10 @@ do
         end
     end
 
-    -- HÀM MỚI: AUTOSAVE
     function SaveManager:AutoSave()
         task.spawn(function()
             self:Save()
         end)
-    end
-
-    function SaveManager:LoadAutoloadConfig()
-        local autoloadFile = self.Folder .. "/autoload.txt"
-        if isfile(autoloadFile) then
-            self:Load()
-        end
     end
 
     function SaveManager:IgnoreThemeSettings()
