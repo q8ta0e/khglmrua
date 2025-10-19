@@ -55,7 +55,7 @@ do
         local configPath = self.Folder .. "/" .. playerName .. ".json"
         
         if not isfile(configPath) then
-            self:Save(playerName)
+            self:Save()
             writefile(self.Folder .. "/autoload.txt", playerName)
         end
         
@@ -67,7 +67,8 @@ do
         self:BuildFolderTree()
     end
 
-    function SaveManager:Save(name)
+    function SaveManager:Save()
+        local playerName = Players.LocalPlayer.Name
         local data = { objects = {} }
 
         for idx, option in next, self.Options do
@@ -79,12 +80,13 @@ do
         local success, encoded = pcall(httpService.JSONEncode, httpService, data)
         if not success then return false, "encode failed" end
 
-        writefile(self.Folder .. "/" .. name .. ".json", encoded)
+        writefile(self.Folder .. "/" .. playerName .. ".json", encoded)
         return true
     end
 
-    function SaveManager:Load(name)
-        local file = self.Folder .. "/" .. name .. ".json"
+    function SaveManager:Load()
+        local playerName = Players.LocalPlayer.Name
+        local file = self.Folder .. "/" .. playerName .. ".json"
         if not isfile(file) then return false, "file not found" end
 
         local success, decoded = pcall(httpService.JSONDecode, httpService, readfile(file))
@@ -156,17 +158,15 @@ do
 
     -- HÀM MỚI: AUTOSAVE
     function SaveManager:AutoSave()
-        local playerName = Players.LocalPlayer.Name
         task.spawn(function()
-            self:Save(playerName)
+            self:Save()
         end)
     end
 
     function SaveManager:LoadAutoloadConfig()
         local autoloadFile = self.Folder .. "/autoload.txt"
         if isfile(autoloadFile) then
-            local name = readfile(autoloadFile)
-            self:Load(name)
+            self:Load()
         end
     end
 
