@@ -2055,6 +2055,7 @@ Components.Section = (function()
 				},
 			}) or nil,
 			New("TextLabel", {
+				RichText = false,
 				Text = Title,
 				TextTransparency = 0,
 				FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal),
@@ -2161,6 +2162,7 @@ Components.Tab = (function()
 				AnchorPoint = Vector2.new(0, 0.5),
 				Position = not fischbypass and Icon and UDim2.new(0, 30, 0.5, 0) or UDim2.new(0, 12, 0.5, 0),
 				Text = Title,
+				RichText = false,
 				TextColor3 = Color3.fromRGB(255, 255, 255),
 				TextTransparency = 0,
 				FontFace = Font.new(
@@ -2583,6 +2585,7 @@ Components.Notification = (function()
 		NewNotification.Title = New("TextLabel", {
 			Position = UDim2.new(0, 14, 0, 17),
 			Text = Config.Title,
+			RichText = false,
 			TextColor3 = Color3.fromRGB(255, 255, 255),
 			TextTransparency = 0,
 			FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json"),
@@ -3001,6 +3004,7 @@ Components.TitleBar = (function()
 				}) or nil,
 
 				New("TextLabel", {
+					RichText = false,
 					Text = Config.Title,
 					FontFace = Font.new(
 						"rbxasset://fonts/families/GothamSSm.json",
@@ -3019,6 +3023,7 @@ Components.TitleBar = (function()
 					},
 				}),
 				Config.SubTitle and New("TextLabel", {
+					RichText = false,
 					Text = Config.SubTitle,
 					TextTransparency = 0.4,
 					FontFace = Font.new(
@@ -3338,6 +3343,7 @@ Components.Window = (function()
 		})
 
 		Window.TabDisplay = New("TextLabel", {
+			RichText = false,
 			Text = "Tab",
 			TextTransparency = 0,
 			FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal),
